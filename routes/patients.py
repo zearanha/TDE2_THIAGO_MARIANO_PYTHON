@@ -10,16 +10,27 @@ patients_bp = Blueprint('patients_bp', __name__)
 def parse_date(date_str):
     return datetime.fromisoformat(date_str).date()
 
+def field_is_missing(data, field):
+    value = data.get(field)
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    return False
+
+
 @patients_bp.route('/', methods=['POST'])
 @auth_required
 def create_patient():
     data = request.get_json() or {}
     # all fields mandatory
     required = ['cpf','nome','email','telefone','data_nascimento','estado','cidade','bairro','cep','rua','numero']
+    
     for f in required:
-        if not data.get(f):
-            return jsonify({'erro':f'Campo {f} obrigatório'}), 400
-    # check duplicates
+        if field_is_missing(data, f):
+            return jsonify({'erro': f'Campo {f} obrigatório'}), 400
+
+    # prevent duplicates
     if Patient.query.filter_by(cpf=data['cpf']).first():
         return jsonify({'erro':'CPF já cadastrado'}), 400
     if Patient.query.filter_by(email=data['email']).first():
